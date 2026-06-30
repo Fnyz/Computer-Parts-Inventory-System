@@ -13,8 +13,8 @@ A web-based inventory and purchasing management system for computer parts built 
 - [Folder Structure](#folder-structure)
 - [Installation](#installation)
 - [Usage](#usage)
-- [Security Notes](#security-notes)
-- [Known Issues & Recommendations](#known-issues--recommendations)
+- [Security](#security)
+- [Changelog](#changelog)
 
 ---
 
@@ -39,13 +39,13 @@ This system allows staff to manage computer parts inventory, track suppliers, cr
 
 ## Tech Stack
 
-| Layer       | Technology                          |
-|-------------|-------------------------------------|
-| Backend     | PHP (procedural + Model classes)    |
-| Database    | MySQL via PDO + MySQLi              |
-| Frontend    | Bootstrap 5, jQuery 3.6, DataTables |
-| Icons       | Font Awesome                        |
-| Fonts       | Google Fonts                        |
+| Layer    | Technology                           |
+|----------|--------------------------------------|
+| Backend  | PHP 7.4+ (MVC-style structure)       |
+| Database | MySQL via PDO (single driver)        |
+| Frontend | Bootstrap 5, jQuery 3.6, DataTables  |
+| Icons    | Font Awesome                         |
+| Fonts    | Google Fonts                         |
 
 ---
 
@@ -114,49 +114,52 @@ This system allows staff to manage computer parts inventory, track suppliers, cr
 
 ## Folder Structure
 
-> See [Recommended Folder Structure](#recommended-folder-structure) below for a cleaner layout.
-
-**Current structure (flat, hard to maintain):**
-
 ```
 /
-├── Accounts.php
-├── Dashboard.php
-├── deleteTrans.php
-├── dropModal.php
-├── getData.php
-├── getTotal.php
-├── insertCus.php
-├── insertProd.php
-├── insertUser.php
-├── log.css
-├── login.php
-├── op.php
-├── particles.php
-├── Product.php
-├── server.php
-├── sidebar.php
-├── Supplier.php
-├── Transaction.php
-├── transactionRecord.php
-├── Transactions.php
-├── updateCus.php
-├── updates.php
-├── updateUser.php
-├── viewTrans.php
-├── Database/
-│   ├── Database.php
-│   └── dbconnect.php
-├── Model/
-│   ├── Cust.php
-│   ├── Prod.php
-│   ├── Saless.php
-│   ├── transac.php
-│   └── User.php
-├── scripts/
-│   └── jquary-3.6.3.js
-└── images/
-    └── [random-folder]/ (product images)
+├── login.php                          ← Entry point
+├── logout.php                         ← Session destroy + redirect
+├── config.php                         ← BASEPATH + BASE_URL constants
+├── .gitignore
+│
+├── app/
+│   ├── Controllers/
+│   │   ├── TransactionController.php  ← Unified AJAX hub
+│   │   ├── ProductController.php
+│   │   ├── SupplierController.php
+│   │   └── UserController.php
+│   ├── Database/
+│   │   └── Database.php               ← Single PDO connection
+│   ├── Helpers/
+│   │   └── csrf.php                   ← CSRF token + validation
+│   └── Models/
+│       ├── Product.php
+│       ├── Sale.php
+│       ├── Supplier.php
+│       ├── TransactionModel.php
+│       └── User.php
+│
+├── assets/
+│   ├── css/app.css
+│   └── js/jquery-3.6.3.min.js
+│
+├── views/
+│   ├── layouts/
+│   │   ├── header.php
+│   │   ├── nav.php
+│   │   └── footer.php
+│   ├── dashboard.php
+│   ├── accounts.php
+│   ├── products.php
+│   ├── suppliers.php
+│   └── transactions/
+│       ├── create.php
+│       ├── history.php
+│       ├── view.php
+│       └── receipt.php
+│
+├── public/
+│   └── index.php                      ← Optional redirect entry point
+└── README.md
 ```
 
 ---
@@ -171,17 +174,16 @@ This system allows staff to manage computer parts inventory, track suppliers, cr
 
 ### Steps
 
-1. Clone or copy the project into your web server's document root (e.g., `htdocs/`).
+1. Clone the repository into your web server's document root (e.g., `htdocs/`).
 2. Create a MySQL database (e.g., `inventory_db`).
 3. Import the database schema (SQL file not included — create tables manually using the structure above).
-4. Edit `Database/Database.php` and `Database/dbconnect.php` with your DB credentials:
+4. Edit `app/Database/Database.php` with your DB credentials:
 
 ```php
-// Database/Database.php
-$host = 'localhost';
-$db   = 'inventory_db';
-$user = 'root';
-$pass = 'your_password';
+private $server = "localhost";
+private $user   = "root";
+private $pass   = "your_password";
+private $dbname = "inventory_db";
 ```
 
 5. Open your browser and navigate to `http://localhost/Computer-Parts-Inventory-Management-System/login.php`.
@@ -199,86 +201,47 @@ $pass = 'your_password';
 
 ---
 
-## Security Notes
+## Security
 
-> **This project was built for learning/academic purposes.** The following vulnerabilities exist and must be addressed before any production deployment.
+All previously identified vulnerabilities have been resolved.
 
-| Severity | Issue |
-|----------|-------|
-| 🔴 High | Passwords stored and compared as **plaintext** — use `password_hash()` / `password_verify()` |
-| 🔴 High | **No authentication guard** on protected pages — unauthenticated users can access all URLs directly |
-| 🔴 High | Passwords **rendered in edit form fields** via AJAX response |
-| 🟠 Medium | **No CSRF tokens** on any POST form or AJAX action |
-| 🟠 Medium | **XSS risk** — user-controlled data echoed directly into HTML without `htmlspecialchars()` |
-| 🟠 Medium | **Unrestricted file upload** — no MIME type or extension validation on product images |
-| 🟡 Low | `var_dump($_POST)` debug output left in `updateCus.php` and `updates.php` |
-| 🟡 Low | No session ID regeneration after login (session fixation risk) |
+| # | Issue | Resolution |
+|---|-------|-----------|
+| 1 | Plaintext password storage | `password_hash(PASSWORD_DEFAULT)` on insert/update; `password_verify()` on login |
+| 2 | No authentication guard on protected pages | Session check + redirect to `login.php` at the top of every protected page and AJAX endpoint |
+| 3 | Session fixation on login | `session_regenerate_id(true)` called immediately after successful login |
+| 4 | Passwords exposed in AJAX edit forms | Password field `value` attribute is always empty; never sent back to the client |
+| 5 | No CSRF protection | `csrf_token()` / `csrf_validate()` applied to all state-changing POST forms and AJAX actions |
+| 6 | XSS — unescaped output | All user-controlled values wrapped in `htmlspecialchars(..., ENT_QUOTES, 'UTF-8')` |
+| 7 | Unrestricted file upload | MIME type validated via `finfo` + extension whitelist (jpg, png, gif, webp); random filename on save |
+| 8 | `var_dump` debug output in production | Removed from all files |
+| 9 | Product quantity overwrite bug | SQL changed to `prod_quan = prod_quan - :prod_quan` (decrement, not overwrite) |
+| 10 | Proper logout | `logout.php` destroys session, clears cookie, then redirects |
 
 ---
 
-## Known Issues & Recommendations
+## Changelog
 
-### Code Quality
+### Refactor (2026-06-30)
 
-- **Mixed DB drivers** — `Database.php` uses PDO while `dbconnect.php` uses MySQLi. Standardize on PDO.
-- **Logic error** — Product quantity is overwritten directly from transaction input instead of being decremented from existing stock.
-- **DRY violations** — Navigation/sidebar markup is copy-pasted across every page. Extract to a shared `includes/nav.php`.
-- **Duplicate jQuery/Bootstrap** — Multiple versions of the same libraries are loaded on some pages.
-- **Dead files** — `sidebar.php` is empty; `particles.php` is an unintegrated placeholder.
-- **Naming inconsistency** — `Saless.php`, `jquary-3.6.3.js`, `Cust.php` for supplier — rename for clarity.
+**Structure**
+- Replaced flat root-level PHP files with an MVC-style layout: `app/Controllers/`, `app/Models/`, `app/Database/`, `app/Helpers/`, `views/`
+- Extracted repeated nav/header/footer markup into shared `views/layouts/` includes
+- Consolidated 8 scattered AJAX endpoint files into a single `TransactionController.php`
+- Removed dead files: `sidebar.php`, `particles.php`, `dropModal.php`
+- Standardised to a single PDO database driver (removed MySQLi `dbconnect.php`)
+- Renamed models to clear names: `Cust` → `Supplier`, `Saless` → `Sale`, `transac` → `TransactionModel`, `Prod` → `Product`
+- Added `config.php` for `BASEPATH` / `BASE_URL` constants
+- Moved assets to `assets/css/` and `assets/js/`
+- Added `.gitignore` to exclude uploaded images and OS/editor files
 
-### Recommended Folder Structure
-
-```
-/
-├── public/                     ← Web root (only this folder exposed)
-│   ├── index.php               ← Entry point / redirects to login
-│   ├── login.php
-│   ├── assets/
-│   │   ├── css/
-│   │   │   └── app.css
-│   │   ├── js/
-│   │   │   └── jquery-3.6.3.min.js
-│   │   └── images/             ← Product images (with validation)
-├── src/
-│   ├── Controllers/            ← Action handlers (replaces op.php, server.php, etc.)
-│   │   ├── AuthController.php
-│   │   ├── ProductController.php
-│   │   ├── SupplierController.php
-│   │   ├── TransactionController.php
-│   │   └── UserController.php
-│   ├── Models/                 ← Database models
-│   │   ├── User.php
-│   │   ├── Product.php
-│   │   ├── Supplier.php
-│   │   └── Transaction.php
-│   ├── Database/
-│   │   └── Database.php        ← Single PDO connection (remove dbconnect.php)
-│   └── Helpers/
-│       ├── Auth.php            ← Session guard helper
-│       └── Sanitize.php        ← htmlspecialchars wrapper
-├── views/                      ← HTML/PHP templates
-│   ├── layouts/
-│   │   ├── header.php
-│   │   ├── sidebar.php
-│   │   └── footer.php
-│   ├── dashboard/
-│   │   └── index.php
-│   ├── products/
-│   │   ├── index.php
-│   │   └── edit.php
-│   ├── suppliers/
-│   │   ├── index.php
-│   │   └── edit.php
-│   ├── transactions/
-│   │   ├── index.php
-│   │   ├── create.php
-│   │   └── view.php
-│   └── accounts/
-│       ├── index.php
-│       └── edit.php
-└── README.md
-```
+**Security fixes**
+- Passwords hashed with `PASSWORD_DEFAULT` (bcrypt)
+- Auth guard on every protected page and AJAX endpoint
+- CSRF tokens on all forms and AJAX mutations
+- `htmlspecialchars` on all rendered output
+- File upload MIME + extension validation
+- Session regeneration on login; proper session destroy on logout
 
 ---
 
