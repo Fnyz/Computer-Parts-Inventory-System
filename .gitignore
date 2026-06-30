@@ -1,0 +1,14 @@
+# Uploaded product images
+images/
+public/assets/uploads/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+
+# PHP logs / cache
+*.log
