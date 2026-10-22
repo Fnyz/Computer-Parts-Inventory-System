@@ -2,10 +2,13 @@
 
 Inventory, purchasing and point of sale for a computer parts shop. Native PHP 8.3 (no framework) and MySQL, with a dark "motherboard" theme and a light "datasheet" theme.
 
+![PartsDesk dashboard in dark mode: stock value, low-stock alert, 14-day sales chart, stock health by category and restock list](docs/screenshots/dashboard-dark.png)
+
 ---
 
 ## Contents
 
+- [Screenshots](#screenshots)
 - [Features](#features)
 - [Tech stack](#tech-stack)
 - [Run it on your computer](#run-it-on-your-computer)
@@ -17,6 +20,59 @@ Inventory, purchasing and point of sale for a computer parts shop. Native PHP 8.
 - [Upgrading from the old version](#upgrading-from-the-old-version)
 - [Troubleshooting](#troubleshooting)
 - [Changelog](#changelog)
+
+---
+
+## Screenshots
+
+Taken from the app with the built-in demo data (`composer seed`). Click any image to see it full size.
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <a href="docs/screenshots/login.png"><img src="docs/screenshots/login.png" alt="Sign-in screen styled as a BIOS boot log next to the sign-in form"></a>
+      <br><b>Sign in</b><br>A BIOS-style boot screen. Only an Admin creates accounts.
+    </td>
+    <td width="50%" valign="top">
+      <a href="docs/screenshots/dashboard-light.png"><img src="docs/screenshots/dashboard-light.png" alt="Dashboard in light mode"></a>
+      <br><b>Dashboard · light mode</b><br>Every page has a Light / Dark / System switch, saved per user.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <a href="docs/screenshots/products.png"><img src="docs/screenshots/products.png" alt="Products list with SKU, category, prices, quantity and stock status LEDs"></a>
+      <br><b>Products</b><br>Search, category and stock filters, LED status badges, CSV export.
+    </td>
+    <td width="50%" valign="top">
+      <a href="docs/screenshots/product-datasheet.png"><img src="docs/screenshots/product-datasheet.png" alt="Product page laid out like a manufacturer's datasheet with specifications, barcode, pricing and stock ledger"></a>
+      <br><b>Product datasheet</b><br>Specs per category, Code 128 barcode, margin, and the stock ledger.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <a href="docs/screenshots/pos.png"><img src="docs/screenshots/pos.png" alt="Point of sale with a product grid on the left and the cart, total due and change on the right"></a>
+      <br><b>Point of sale</b><br>Scan or search, cart, cash / GCash / card. The server recalculates every total.
+    </td>
+    <td width="50%" valign="top">
+      <a href="docs/screenshots/purchase-order.png"><img src="docs/screenshots/purchase-order.png" alt="Purchase order ready to receive, with ordered and arrived quantities per part"></a>
+      <br><b>Purchase order</b><br>Draft → Ordered → Received. Receiving a delivery adds the stock.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <a href="docs/screenshots/reports.png"><img src="docs/screenshots/reports.png" alt="Reports page with revenue, gross profit, daily chart, top products and stock valuation"></a>
+      <br><b>Reports</b><br>Revenue, gross profit, top products, stock valuation. CSV and PDF export.
+    </td>
+    <td width="50%" valign="top">
+      <table>
+        <tr>
+          <td valign="top"><a href="docs/screenshots/receipt.png"><img src="docs/screenshots/receipt.png" alt="Printed 80 mm sales receipt" width="230"></a><br><b>Receipt</b><br>80 mm print and PDF.</td>
+          <td valign="top"><a href="docs/screenshots/phone.png"><img src="docs/screenshots/phone.png" alt="Dashboard on a phone screen" width="170"></a><br><b>Phone</b><br>Works on phones and tablets.</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
 
 ---
 
@@ -120,6 +176,7 @@ database/
   migrations/      Phinx migrations (also import data from the old app)
   seeds/           DemoSeeder
 tests/             Unit/, Feature/ (PHPUnit), smoke/ (Playwright)
+docs/screenshots/  the images in this README
 docker/, Dockerfile, render.yaml, .github/workflows/ci-cd.yml, scripts/
 ```
 
