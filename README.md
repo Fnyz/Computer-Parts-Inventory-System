@@ -1,295 +1,270 @@
-# Computer Parts Inventory Management System
+# PartsDesk · Computer Parts Inventory System
 
-A web-based inventory and purchasing management system for computer parts built with PHP and MySQL.
+Inventory, purchasing and point of sale for a computer parts shop. Native PHP 8.3 (no framework) and MySQL, with a dark "motherboard" theme and a light "datasheet" theme.
 
 ---
 
-## Table of Contents
+## Contents
 
-- [Overview](#overview)
 - [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Database Structure](#database-structure)
-- [Folder Structure](#folder-structure)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Security](#security)
+- [Tech stack](#tech-stack)
+- [Run it on your computer](#run-it-on-your-computer)
+- [Roles](#roles)
+- [Project structure](#project-structure)
+- [Tests and code checks](#tests-and-code-checks)
+- [Deploying to Render + Aiven](#deploying-to-render--aiven)
+- [CI/CD pipeline](#cicd-pipeline)
+- [Upgrading from the old version](#upgrading-from-the-old-version)
+- [Troubleshooting](#troubleshooting)
 - [Changelog](#changelog)
-
----
-
-## Overview
-
-This system allows staff to manage computer parts inventory, track suppliers, create purchase transactions, and view transaction history. It includes basic user account management and a dashboard with summary counts.
 
 ---
 
 ## Features
 
-- **Authentication** — Login/logout with session-based access
-- **Account Management** — Create and edit user accounts
-- **Supplier Management** — Add, view, and update suppliers
-- **Product Catalog** — Add products with image upload, price, quantity, and description
-- **Transaction Entry** — Build purchase orders with line items (product + supplier + quantity)
-- **Payment Calculation** — Auto-calculated totals, payment, and change
-- **Transaction History** — List of past transactions with detail/receipt view
-- **Dashboard** — Summary counts for total products and transactions
+| Area | What it does |
+|---|---|
+| **Products** | SKU, category, brand/model, specs per category (socket, TDP, capacity…), cost and selling price, reorder level, photo, barcode label, CSV export |
+| **Stock ledger** | Every change to stock is one recorded row: opening stock, purchases received, sales, voids and adjustments, with who and why. Stock can never go below zero. |
+| **Categories** | Each category has its own spec fields, shown on the product form |
+| **Suppliers** | Contacts, notes, their products and purchase orders. Archived, never deleted. |
+| **Purchase orders** | Draft → Ordered → Received (or Cancelled). Receiving adds stock and can update each part's cost. Partial deliveries are recorded. |
+| **Point of sale** | Scan or search parts, cart, discount (Staff/Admin), cash / GCash / card, change. The server recalculates every price and locks stock, so two cashiers can't sell the same last unit. Sequential receipt numbers (`SO-2026-00042`), printable 80 mm receipt and PDF. |
+| **Sales** | Filter by date, cashier, payment; void with a reason (stock goes back); CSV export |
+| **Dashboard** | Stock value, units, low/out of stock, sales today, 14-day sales vs. purchases chart, stock health by category, restock list, recent activity |
+| **Reports** | Revenue, gross profit and margin, sales by day, top products, by cashier and payment, stock valuation by category, low stock. CSV and PDF export. |
+| **Users & security** | Admin / Staff / Employee roles, first-run Admin setup, sign-in throttling, CSRF on every form, activity log, Light / Dark / System theme per user |
 
 ---
 
-## Tech Stack
+## Tech stack
 
-| Layer    | Technology                           |
-|----------|--------------------------------------|
-| Backend  | PHP 7.4+ (MVC-style structure)       |
-| Database | MySQL via PDO (single driver)        |
-| Frontend | Bootstrap 5, jQuery 3.6, DataTables  |
-| Icons    | Font Awesome                         |
-| Fonts    | Google Fonts                         |
-
----
-
-## Database Structure
-
-### `user_account`
-| Column           | Type    |
-|------------------|---------|
-| user_id          | INT PK  |
-| user_fname       | VARCHAR |
-| user_lname       | VARCHAR |
-| user_phone       | VARCHAR |
-| username         | VARCHAR |
-| user_pass        | VARCHAR |
-| userType         | VARCHAR |
-| user_created_at  | DATETIME|
-| user_updated_at  | DATETIME|
-
-### `supplier`
-| Column          | Type    |
-|-----------------|---------|
-| cus_id          | INT PK  |
-| cus_fname       | VARCHAR |
-| cus_lname       | VARCHAR |
-| cus_phone       | VARCHAR |
-| cus_created_at  | DATETIME|
-| cus_updated_at  | DATETIME|
-
-### `product`
-| Column          | Type    |
-|-----------------|---------|
-| prod_id         | INT PK  |
-| prod_name       | VARCHAR |
-| prod_image      | VARCHAR |
-| prod_price      | DECIMAL |
-| prod_quan       | INT     |
-| prod_desc       | TEXT    |
-| prod_created_at | DATETIME|
-| prod_updated_at | DATETIME|
-
-### `trans_history`
-| Column         | Type    |
-|----------------|---------|
-| trans_id       | INT PK  |
-| prod_id        | INT FK  |
-| cus_id         | INT FK  |
-| user_id        | INT FK  |
-| trans_code     | VARCHAR |
-| sub_price      | DECIMAL |
-| sub_quantity   | INT     |
-| created_date   | DATETIME|
-
-### `transactions`
-| Column             | Type    |
-|--------------------|---------|
-| transac_id         | INT PK  |
-| transac_code       | VARCHAR |
-| transac_total      | DECIMAL |
-| transac_quan       | INT     |
-| cus_id             | INT FK  |
-| transac_payment    | DECIMAL |
-| transac_created_at | DATETIME|
-| transac_updated_at | DATETIME|
+| Layer | Choice |
+|---|---|
+| Language | PHP 8.3+, Composer, PSR-4 (`App\` → `src/`) |
+| Routing | `nikic/fast-route` behind a single entry point, `public/index.php` |
+| Database | MySQL 8 / MariaDB 10.4+, PDO, migrations with `robmorgan/phinx` |
+| PDFs / barcodes | `dompdf/dompdf`, `picqer/php-barcode-generator` (Code 128) |
+| Logging | `monolog/monolog` (file locally, stderr on Render) |
+| Front end | Plain PHP templates, one stylesheet (`public/assets/css/app.css`), a little vanilla JavaScript. No jQuery, no build step. |
+| Tests & checks | PHPUnit, PHPStan, PHP-CS-Fixer, Playwright smoke tests |
+| Hosting | Docker image (`php:8.3-apache`) on Render, MySQL on Aiven, images on Cloudinary |
 
 ---
 
-## Folder Structure
+## Run it on your computer
 
-```
-/
-├── login.php                          ← Entry point
-├── logout.php                         ← Session destroy + redirect
-├── config.php                         ← BASEPATH + BASE_URL constants
-├── .gitignore
-│
-├── app/
-│   ├── Controllers/
-│   │   ├── TransactionController.php  ← Unified AJAX hub
-│   │   ├── ProductController.php
-│   │   ├── SupplierController.php
-│   │   └── UserController.php
-│   ├── Database/
-│   │   └── Database.php               ← Single PDO connection
-│   ├── Helpers/
-│   │   └── csrf.php                   ← CSRF token + validation
-│   └── Models/
-│       ├── Product.php
-│       ├── Sale.php
-│       ├── Supplier.php
-│       ├── TransactionModel.php
-│       └── User.php
-│
-├── assets/
-│   ├── css/app.css
-│   └── js/jquery-3.6.3.min.js
-│
-├── views/
-│   ├── layouts/
-│   │   ├── header.php
-│   │   ├── nav.php
-│   │   └── footer.php
-│   ├── dashboard.php
-│   ├── accounts.php
-│   ├── products.php
-│   ├── suppliers.php
-│   └── transactions/
-│       ├── create.php
-│       ├── history.php
-│       ├── view.php
-│       └── receipt.php
-│
-├── public/
-│   └── index.php                      ← Optional redirect entry point
-└── README.md
-```
-
----
-
-## Installation
-
-### Requirements
-
-- PHP 7.4+
-- MySQL 5.7+ or MariaDB 10.3+
-- Web server: Apache or Nginx (or XAMPP/WAMP locally)
-
-### Steps
-
-1. Clone the repository into your web server's document root (e.g., `htdocs/`).
-2. Create the database and tables:
+You need **PHP 8.3 or newer** with `pdo_mysql`, **Composer**, and a **MySQL/MariaDB** server. XAMPP's MySQL is fine. XAMPP's own PHP is often 7.4, so use a newer one, for example Homebrew's `php`.
 
 ```bash
-mysql -u root -p < database/schema.sql
+composer install
+cp .env.example .env          # then edit the database settings
 ```
 
-3. Copy `.env.example` to `.env` and fill in your database credentials. `.env` is git-ignored; never commit it.
+For XAMPP on macOS, connect through its socket file:
 
 ```ini
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=inventorymanagementsystem
+DB_SOCKET=/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock
+DB_NAME=partsdesk             # create it first in phpMyAdmin, or use an existing one
 DB_USER=root
-DB_PASS=your_password
+DB_PASS=
+APP_DEBUG=true                # only on your own computer
 ```
 
-4. Open `http://localhost/Computer-Parts-Inventory-System/login.php` and click **Set up admin account**. This button only appears while there are no accounts. The first account is always an Admin.
-5. Sign in, then add Staff and Employee accounts from **Registered Accounts**.
-
-### Upgrading an existing database
-
-If your database was created by the **original** version of the app (it has a `customer` table instead of `supplier`), run once:
+Create the tables, then start the app:
 
 ```bash
-mysql -u root -p <your_database> < database/upgrade-legacy.sql
-php database/hash-plaintext-passwords.php
+composer migrate              # creates or updates the tables (safe to run again)
+composer serve                # http://127.0.0.1:8010
 ```
 
-The first command renames `customer` to `supplier`, adds the `userType` and `prod_image` columns, and makes the oldest account the Admin. The second stores any plain-text passwords as hashes; each password stays the same.
+Open http://127.0.0.1:8010. The first visit shows **Set up**, which creates the first Admin. After that, the Admin adds accounts under **Users**.
 
-If you installed after the 2026-06 refactor but before the Phase 0 hotfixes, run once:
-
-```bash
-mysql -u root -p inventorymanagementsystem < database/phase0-upgrade.sql
-php database/find-empty-passwords.php
-```
-
-The script lists accounts whose password was wiped by the old edit bug. An Admin should set a new password for each of them.
+**Demo data** (optional, only for an empty database): `composer seed` adds 3 suppliers, 20 computer parts, purchase orders and two weeks of sales. It refuses to run if products already exist.
 
 ---
 
-## Usage
+## Roles
 
-1. **Login** with a registered account at `login.php`.
-2. Use the **sidebar menu** to navigate between Accounts, Suppliers, Products, and Transactions.
-3. **Add products** with name, price, quantity, description, and an image.
-4. **Add suppliers** with name and contact number.
-5. Go to **Transactions** to create a new purchase order — select a supplier, add product line items, enter payment, and save.
-6. View past transactions under **Transaction History**.
+| | Admin | Staff | Employee |
+|---|:-:|:-:|:-:|
+| Sell at the point of sale, view sales | ✔ | ✔ | ✔ |
+| View products and stock | ✔ | ✔ | ✔ |
+| Give discounts, void sales | ✔ | ✔ | |
+| Add/edit products, categories, suppliers; adjust stock | ✔ | ✔ | |
+| Purchase orders, reports, cost and stock value | ✔ | ✔ | |
+| Users and the activity log | ✔ | | |
+
+The last active Admin can't be demoted or deactivated, and nobody can deactivate their own account.
 
 ---
 
-## Security
+## Project structure
 
-All previously identified vulnerabilities have been resolved.
+```
+public/            ← the only folder the web server exposes
+  index.php        ← every request comes in here
+  assets/          ← app.css, app.js, pos.js, favicon
+  uploads/         ← product photos when Cloudinary isn't set
+src/
+  Core/            App, Router, Request/Response, View, Session, Csrf, Database, Validator, Paginator, Csv, Logger
+  Auth/            Auth (sign-in), Permissions (roles), LoginThrottle
+  Middleware/      auth, guest, can:<ability>
+  Controllers/     one per area (Products, Pos, Sales, PurchaseOrders, Reports…)
+  Services/        StockService, CheckoutService, PurchaseService, SequenceService, BarcodeService, ActivityLogger, Images/*
+  Repositories/    all SQL lives here
+  helpers.php      e(), money(), url(), csrf_field(), stock_status()…
+config/routes.php  every URL, with the role each one needs
+views/             PHP templates (layouts, partials, one folder per area)
+database/
+  migrations/      Phinx migrations (also import data from the old app)
+  seeds/           DemoSeeder
+tests/             Unit/, Feature/ (PHPUnit), smoke/ (Playwright)
+docker/, Dockerfile, render.yaml, .github/workflows/ci-cd.yml, scripts/
+```
 
-| # | Issue | Resolution |
-|---|-------|-----------|
-| 1 | Plaintext password storage | `password_hash(PASSWORD_DEFAULT)` on insert/update; `password_verify()` on login |
-| 2 | No authentication guard on protected pages | Session check + redirect to `login.php` at the top of every protected page and AJAX endpoint |
-| 3 | Session fixation on login | `session_regenerate_id(true)` called immediately after successful login |
-| 4 | Passwords exposed in AJAX edit forms | Password field `value` attribute is always empty; never sent back to the client |
-| 5 | No CSRF protection | `csrf_token()` / `csrf_validate()` applied to all state-changing POST forms and AJAX actions |
-| 6 | XSS — unescaped output | All user-controlled values wrapped in `htmlspecialchars(..., ENT_QUOTES, 'UTF-8')` |
-| 7 | Unrestricted file upload | MIME type validated via `finfo` + extension whitelist (jpg, png, gif, webp); random filename on save |
-| 8 | `var_dump` debug output in production | Removed from all files |
-| 9 | Product quantity overwrite bug | SQL changed to `prod_quan = prod_quan - :prod_quan` (decrement, not overwrite) |
-| 10 | Proper logout | `logout.php` destroys session, clears cookie, then redirects |
+**House rules**
+- Stock changes only through `StockService`, inside a database transaction, and always writes a ledger row.
+- Never trust prices, totals or roles from the browser. The server recalculates them.
+- Money is handled as integer centavos in PHP (`to_cents()`, `money()`), and stored as `DECIMAL(12,2)`.
+- Escape all output with `e()`. Every POST needs `csrf_field()` (JSON requests send `X-CSRF-Token`).
+
+---
+
+## Tests and code checks
+
+The tests **delete and recreate** a database called `partsdesk_test` (it must contain "test" in its name), so give them a MySQL server you don't mind them using. By default they connect to `127.0.0.1:3306` as `root` with no password; override any of these in your shell:
+
+```bash
+composer test                                        # PHPUnit: 61 unit + feature tests
+DB_SOCKET=/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock composer test   # XAMPP
+composer stan                                        # PHPStan static analysis
+composer lint                                        # code style (composer fix to apply)
+
+# Browser smoke test against any running copy
+npm ci && npx playwright install chromium
+APP_URL=http://127.0.0.1:8010 SMOKE_USER=… SMOKE_PASS=… npx playwright test
+APP_URL=http://127.0.0.1:8010 bash scripts/smoke.sh
+```
+
+---
+
+## Deploying to Render + Aiven
+
+Both have free plans with no card needed. Free tiers change, so check their pricing pages.
+
+### 1. Database: Aiven
+
+1. Sign up at [aiven.io](https://aiven.io/free-mysql-database) and create a **free MySQL** service.
+2. From the service's **Overview** page, note the **host, port, user, password and database name**, and download the **CA certificate** (`ca.pem`).
+
+The free service may be powered off after a long time unused. Aiven emails you first, and you can turn it back on in the console.
+
+### 2. Images: Cloudinary
+
+Render's free disk is wiped on every deploy and restart, so product photos must live elsewhere. Create a free [Cloudinary](https://cloudinary.com) account and copy its **API environment variable**: `cloudinary://API_KEY:API_SECRET@CLOUD_NAME`.
+
+### 3. App: Render
+
+1. Sign in to [render.com](https://render.com) with GitHub. Choose **New → Blueprint** and pick this repository. Render reads `render.yaml` and creates a free **Docker** web service named `partsdesk` in Singapore.
+2. Fill in the environment variables it asks for:
+
+   | Variable | Value |
+   |---|---|
+   | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS` | From Aiven |
+   | `DB_SSL_CA` | Paste the whole text of `ca.pem` |
+   | `CLOUDINARY_URL` | From Cloudinary |
+   | `SHOP_ADDRESS`, `SHOP_PHONE` | Printed on receipts (optional) |
+
+3. **Auto-deploy is off** on purpose: GitHub Actions deploys only after the tests pass.
+4. Note the service's **ID** (starts with `srv-`, shown in its URL) and create an **API key** (Account settings → API keys).
+
+### 4. GitHub settings
+
+In the repository: **Settings → Environments → New environment** named `production`, then add:
+
+| Kind | Name | Value |
+|---|---|---|
+| Secret | `RENDER_API_KEY` | Render API key |
+| Secret | `RENDER_SERVICE_ID` | `srv-…` |
+| Secret | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`, `DB_SSL_CA` | Same as Render (migrations run from GitHub) |
+| Secret | `SMOKE_USER`, `SMOKE_PASS` | An **Employee** account created only for the smoke test |
+| Secret (optional) | `DISCORD_WEBHOOK_URL` | Alerts when a deploy is rolled back |
+| Variable | `APP_URL` | `https://<your-service>.onrender.com` |
+
+Then **Settings → Branches → Add rule** for `main`: require the **Lint, analyse, test** and **Build Docker image** checks to pass before merging.
+
+### 5. First deploy
+
+Merge to `main` (or run the workflow by hand from the **Actions** tab). Once it's live, open the site, create the Admin on the **Set up** screen, then create the Employee account you put in `SMOKE_USER`/`SMOKE_PASS`.
+
+**Optional:** add a free [UptimeRobot](https://uptimerobot.com) monitor for `https://<your-service>.onrender.com/health` every 5 minutes. It alerts you if the site goes down and stops the free instance from sleeping.
+
+---
+
+## CI/CD pipeline
+
+`.github/workflows/ci-cd.yml`:
+
+```
+Pull request / push ─► Lint (PHP-CS-Fixer) ─► PHPStan ─► composer audit ─► PHPUnit on MySQL 8
+                    └► Docker build + container answers /health
+Push to main ───────► migrate Aiven (Phinx) ─► Render deploy of this exact commit ─► wait until live
+                    ─► smoke test (curl + Playwright, retries while the free instance wakes up)
+                    ─► pass ✔  |  fail ✘ roll back to the previous live deploy + alert
+```
+
+- Until the Render/Aiven secrets exist, the deploy job just leaves a notice and the pipeline stays green.
+- Render's free plan has no pre-deploy step, so migrations run from GitHub before the new code goes live. Write migrations so the **currently live** code still works with them: add columns, don't rename or drop them in the same release.
+- Dependabot opens weekly pull requests for Composer, npm, Actions and Docker updates.
+
+---
+
+## Upgrading from the old version
+
+The migrations import the old app's data automatically the first time they run on its database:
+
+- `user_account` → `users`: same ids and passwords. Plain-text passwords are hashed. Old roles (including the "Emoloyee" typo) are mapped; if there were no roles, the oldest account becomes the Admin.
+- `supplier` or `customer` → `suppliers`: the old "last name" column was used for the address.
+- `product` → `products`: SKU `LEGACY-<id>`, same price and quantity, cost 0, and an "opening stock" ledger row.
+
+The old tables (and old transactions) stay untouched in the database for reference. After upgrading, give the imported products real SKUs, categories and cost prices.
+
+---
+
+## Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| "The system is temporarily unavailable" | The app can't reach the database. Check the `DB_*` settings, that MySQL is running, and on Aiven that the service is powered on. `/health` shows `"database": "unreachable"`. |
+| XAMPP: can't connect via `127.0.0.1` | Use `DB_SOCKET=/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock` instead of host/port. |
+| "This form expired" | The page was open too long, or cookies are blocked. Refresh and submit again. |
+| "Too many wrong passwords" | Wait 15 minutes, or an Admin resets the password under Users. |
+| Product photos disappear on Render | `CLOUDINARY_URL` isn't set. Without it, uploads go to Render's temporary disk. |
+| First page on Render is slow | The free instance sleeps after 15 minutes idle and takes up to a minute to wake. UptimeRobot keeps it awake. |
+| Error details | Locally set `APP_DEBUG=true` and see `storage/logs/app.log`. On Render, check the service's **Logs** tab. |
 
 ---
 
 ## Changelog
 
-### Phase 0 hotfixes (2026-10-22)
+### 2026-10-22 · Rebuild (Phases 1–5)
 
-**Security**
-- Public sign-up removed. Only the first account can be created from the login page, and it is always an Admin. After that, only an Admin can create accounts, and the server validates the role (`Admin`, `Staff`, `Employee`).
-- Editing a user no longer wipes their password. A blank password field keeps the current one, and empty passwords are rejected at login.
-- Users can edit only their own account; an Admin can edit anyone. Who is asking now comes from the session, not from a form field.
-- Employees are blocked from recording transactions on the server, not only in the browser. The encoder on a transaction line comes from the session.
-- Database credentials moved to `.env`. Connection errors and exceptions are logged instead of shown to users.
+- **Phase 1 · Foundation:** Composer, front controller and router, middleware, sessions with flash messages, CSRF, validation, Phinx migrations, logging, roles, first-run setup, sign-in throttling, user management, PCB theme with Light / Dark / System.
+- **Phase 2 · Automation:** Docker image, Render Blueprint, GitHub Actions CI/CD with migrations, deploy, smoke tests and automatic rollback; Cloudinary image storage; Dependabot.
+- **Phase 3 · Inventory:** categories with spec fields, products, suppliers, stock ledger and adjustments, CSV exports, import of old data.
+- **Phase 4 · Purchasing & POS:** purchase orders, point of sale with server-side totals and row locking, sequential receipt numbers, receipts (HTML + PDF), voids.
+- **Phase 5 · Insight:** dashboard, reports with CSV/PDF export, activity log, barcode labels, demo data seeder.
+- The old pages (`login.php`, `views/*.php`, `app/`) were removed; everything they did is in the new app.
 
-**Bugs**
-- Every page in `views/` loaded `config.php` from the wrong folder and crashed after login. The include paths are fixed.
-- Editing a product no longer deletes its image.
-- Transaction History works under MySQL's default `ONLY_FULL_GROUP_BY` mode.
-- Success and error messages are now shown at the top of each page.
-- One shared database connection per request instead of one per query.
+### 2026-10-22 · Phase 0 hotfixes
 
-**Setup**
-- Added `database/schema.sql`, `database/phase0-upgrade.sql`, `database/find-empty-passwords.php` and `.env.example`.
+Removed public sign-up, fixed the password wipe on user edit, enforced per-user edit rights and Employee restrictions on the server, moved credentials to `.env`, fixed the broken include paths, product image loss and the `ONLY_FULL_GROUP_BY` crash.
 
-### Refactor (2026-06-30)
+### 2026-06-30 · First refactor
 
-**Structure**
-- Replaced flat root-level PHP files with an MVC-style layout: `app/Controllers/`, `app/Models/`, `app/Database/`, `app/Helpers/`, `views/`
-- Extracted repeated nav/header/footer markup into shared `views/layouts/` includes
-- Consolidated 8 scattered AJAX endpoint files into a single `TransactionController.php`
-- Removed dead files: `sidebar.php`, `particles.php`, `dropModal.php`
-- Standardised to a single PDO database driver (removed MySQLi `dbconnect.php`)
-- Renamed models to clear names: `Cust` → `Supplier`, `Saless` → `Sale`, `transac` → `TransactionModel`, `Prod` → `Product`
-- Added `config.php` for `BASEPATH` / `BASE_URL` constants
-- Moved assets to `assets/css/` and `assets/js/`
-- Added `.gitignore` to exclude uploaded images and OS/editor files
-
-**Security fixes**
-- Passwords hashed with `PASSWORD_DEFAULT` (bcrypt)
-- Auth guard on every protected page and AJAX endpoint
-- CSRF tokens on all forms and AJAX mutations
-- `htmlspecialchars` on all rendered output
-- File upload MIME + extension validation
-- Session regeneration on login; proper session destroy on logout
+MVC-style folders, single PDO driver, password hashing, CSRF tokens, output escaping, upload validation.
 
 ---
 
-## License
-
-This project is for educational purposes only.
+This project is for educational purposes.
