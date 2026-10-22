@@ -115,3 +115,37 @@ function query_with(array $changes): string
 
     return $query ? '?' . http_build_query($query) : '';
 }
+
+/** DECIMAL value from the database ("11950.00") as centavos. */
+function db_cents(mixed $value): int
+{
+    return to_cents((string) ($value ?? '0')) ?? 0;
+}
+
+/** Centavos as a DECIMAL string for the database. */
+function db_money(int $cents): string
+{
+    return number_format($cents / 100, 2, '.', '');
+}
+
+/**
+ * Stock state for the LED badges.
+ *
+ * @return array{key: string, label: string}  key: ok | low | out
+ */
+function stock_status(int $qty, int $reorderLevel): array
+{
+    if ($qty <= 0) {
+        return ['key' => 'out', 'label' => 'Out'];
+    }
+
+    return $qty <= $reorderLevel ? ['key' => 'low', 'label' => 'Low'] : ['key' => 'ok', 'label' => 'In stock'];
+}
+
+/** <span class="status …"> badge for a stock level. */
+function stock_badge(int $qty, int $reorderLevel): string
+{
+    $s = stock_status($qty, $reorderLevel);
+
+    return '<span class="status status-' . $s['key'] . '"><span class="led"></span>' . e($s['label']) . '</span>';
+}

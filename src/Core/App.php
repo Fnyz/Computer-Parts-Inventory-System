@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core;
 
 use App\Auth\Auth;
+use App\Repositories\ProductRepository;
 
 final class App
 {
@@ -36,6 +37,8 @@ final class App
             Session::start();
             View::share('request', $request);
             View::share('authUser', Auth::user());
+            // Top bar alert: parts at or below their reorder level
+            View::share('lowStockCount', Auth::can('products.view') ? (new ProductRepository())->lowStockCount() : 0);
 
             if ($request->method === 'POST' && !Csrf::valid($request)) {
                 throw new HttpException(419, 'This form expired. Go back, refresh the page and try again.');

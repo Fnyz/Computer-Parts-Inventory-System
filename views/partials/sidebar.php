@@ -19,7 +19,6 @@ $links = [
     ['Users', '/users', 'users', 'users.manage', 'J3 · ADMIN'],
     ['Activity log', '/activity', 'log', 'activity.view', 'J3 · ADMIN'],
 ];
-$available = $navAvailable ?? ['/', '/users'];
 $group = null;
 ?>
 <aside class="sidebar">
@@ -28,7 +27,7 @@ $group = null;
   </div>
   <nav aria-label="Main">
     <?php foreach ($links as [$label, $href, $iconName, $ability, $linkGroup]): ?>
-      <?php if (!Auth::can($ability) || !in_array($href, $available, true)) { continue; } ?>
+      <?php if (!Auth::can($ability)) { continue; } ?>
       <?php if ($linkGroup !== $group && $linkGroup !== null): $group = $linkGroup; ?>
         <div class="nav-group"><?= e($linkGroup) ?></div>
       <?php endif; ?>

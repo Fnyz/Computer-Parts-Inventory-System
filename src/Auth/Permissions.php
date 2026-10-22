@@ -16,7 +16,7 @@ final class Permissions
         'staff' => [
             'dashboard.view', 'products.view', 'products.manage', 'categories.manage',
             'suppliers.view', 'suppliers.manage', 'stock.view', 'stock.adjust',
-            'po.view', 'po.manage', 'pos.use', 'sales.view', 'reports.view',
+            'po.view', 'po.manage', 'pos.use', 'pos.discount', 'sales.view', 'sales.void', 'reports.view',
         ],
         'employee' => [
             'dashboard.view', 'products.view', 'stock.view', 'pos.use', 'sales.view',

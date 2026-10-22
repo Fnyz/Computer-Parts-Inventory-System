@@ -4,7 +4,7 @@
 
 :root {
   --bg: #0B1210; --panel: #0F1B17; --raised: #13241E; --sunken: #070D0B;
-  --nav: #0B3D2E; --nav-hover: #0F4A38; --nav-active: #0F4A38; --nav-text: #D5E2DC; --nav-muted: #A9C2B6; --nav-border: 2px solid #C8803B;
+  --nav: #0B3D2E; --nav-hover: #0F4A38; --nav-active: #0F4A38; --nav-text: #D5E2DC; --nav-muted: #A9C2B6; --nav-border: 2px solid #C8803B; --nav-line: #C8803B; --nav-line-w: 2px;
   --line: #1F3A30; --line-2: #2B4A3E; --fg: #E8EDEA; --muted: #A9C2B6; --dim: #7F968C;
   --accent: #39FF88; --accent-fg: #04140C; --accent-glow: 0 0 16px rgba(57, 255, 136, .32);
   --copper: #C8803B; --link: #E0A66A; --link-hover: #F3C48F; --th-bg: #0B3D2E; --th-fg: #A9C2B6;
@@ -26,7 +26,7 @@
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
     --bg: #F4F6F3; --panel: #FFFFFF; --raised: #EEF2EF; --sunken: #FFFFFF;
-    --nav: #FFFFFF; --nav-hover: #E6EEEA; --nav-active: #0B6E4F; --nav-text: #2A3832; --nav-muted: #52625A; --nav-border: 1px solid #D5DDD8;
+    --nav: #FFFFFF; --nav-hover: #E6EEEA; --nav-active: #0B6E4F; --nav-text: #2A3832; --nav-muted: #52625A; --nav-border: 1px solid #D5DDD8; --nav-line: #D5DDD8; --nav-line-w: 1px;
     --line: #E4EAE6; --line-2: #C3CEC8; --fg: #111A16; --muted: #52625A; --dim: #5F6E67;
     --accent: #0B6E4F; --accent-fg: #FFFFFF; --accent-glow: none;
     --copper: #9A5A1C; --link: #0B6E4F; --link-hover: #08523B; --th-bg: #EEF2EF; --th-fg: #52625A;
@@ -43,7 +43,7 @@
 }
 :root[data-theme="light"] {
   --bg: #F4F6F3; --panel: #FFFFFF; --raised: #EEF2EF; --sunken: #FFFFFF;
-  --nav: #FFFFFF; --nav-hover: #E6EEEA; --nav-active: #0B6E4F; --nav-text: #2A3832; --nav-muted: #52625A; --nav-border: 1px solid #D5DDD8;
+  --nav: #FFFFFF; --nav-hover: #E6EEEA; --nav-active: #0B6E4F; --nav-text: #2A3832; --nav-muted: #52625A; --nav-border: 1px solid #D5DDD8; --nav-line: #D5DDD8; --nav-line-w: 1px;
   --line: #E4EAE6; --line-2: #C3CEC8; --fg: #111A16; --muted: #52625A; --dim: #5F6E67;
   --accent: #0B6E4F; --accent-fg: #FFFFFF; --accent-glow: none;
   --copper: #9A5A1C; --link: #0B6E4F; --link-hover: #08523B; --th-bg: #EEF2EF; --th-fg: #52625A;
@@ -79,7 +79,11 @@ img { max-width: 100%; }
 .icon { flex: none; vertical-align: middle; }
 
 /* ---------- App shell ---------- */
-.app { display: flex; min-height: 100vh; }
+/* The background paints the sidebar's colour down the whole page, so it doesn't stop at the window's height */
+.app {
+  display: flex; min-height: 100vh;
+  background: linear-gradient(to right, var(--nav) 0 calc(236px - var(--nav-line-w)), var(--nav-line) calc(236px - var(--nav-line-w)) 236px, var(--bg) 236px);
+}
 .sidebar {
   width: 236px; flex: none; background: var(--nav); border-right: var(--nav-border);
   display: flex; flex-direction: column; padding: 18px 12px; position: sticky; top: 0; height: 100vh; overflow-y: auto;
@@ -116,7 +120,7 @@ img { max-width: 100%; }
   display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 28px;
   border-bottom: 1px solid var(--line); background: var(--bg); position: sticky; top: 0; z-index: 5;
 }
-.menu-toggle { display: none; }
+.topbar .menu-toggle { display: none; }
 .search {
   flex: 1 1 260px; display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px;
   background: var(--panel); border: 1px solid var(--line-2); border-radius: 4px; color: var(--muted);
@@ -135,6 +139,8 @@ img { max-width: 100%; }
 .theme-switch button[aria-pressed="true"] { background: var(--chip-on-bg); color: var(--chip-on-fg); }
 
 .page { padding: 24px 28px 40px; display: grid; gap: 20px; align-content: start; }
+/* Grid items otherwise refuse to shrink below their widest line (e.g. a long log entry) and widen the page */
+.page > * { min-width: 0; }
 .page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
 .page-head h1 { margin: 4px 0 0; font: 700 30px/1.15 var(--font-display); letter-spacing: .02em; }
 .page-head .lede { margin: 6px 0 0; color: var(--muted); max-width: 70ch; }
@@ -374,7 +380,8 @@ legend { font: 500 11px var(--font-mono); letter-spacing: .12em; color: var(--co
   .sidebar nav { display: none; }
   .sidebar.open nav { display: block; }
   .sidebar::after { display: none; }
-  .menu-toggle { display: inline-flex; }
+  .topbar .menu-toggle { display: inline-flex; }
+  .app { background: var(--bg); }
   .sidebar-head { display: flex; justify-content: space-between; align-items: center; }
   .sidebar-foot { display: none; }
   .sidebar.open .sidebar-foot { display: grid; }

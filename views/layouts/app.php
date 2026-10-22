@@ -33,7 +33,7 @@ $themePref = $user['theme'] ?? 'system';
   <div class="main">
     <header class="topbar">
       <button type="button" class="btn btn-sm menu-toggle" data-menu-toggle aria-expanded="false" aria-label="Open the menu"><?= icon('menu') ?></button>
-      <?php if (Auth::can('products.view') && class_exists(App\Controllers\ProductController::class)): ?>
+      <?php if (Auth::can('products.view')): ?>
         <form class="search" action="<?= e(url('/products')) ?>" method="get" role="search">
           <?= icon('search', 16) ?>
           <label class="sr-only" for="global-search">Search parts</label>
