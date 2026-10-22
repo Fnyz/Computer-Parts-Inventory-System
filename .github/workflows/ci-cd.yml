@@ -37,7 +37,7 @@ jobs:
       DB_PASS: root
       DB_NAME: partsdesk_test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
@@ -58,7 +58,7 @@ jobs:
     name: Build Docker image
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build
         run: docker build -t partsdesk:ci .
       - name: Container starts and answers /health
@@ -101,7 +101,7 @@ jobs:
           else
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: steps.check.outputs.configured == 'true'
       - uses: shivammathur/setup-php@v2
         if: steps.check.outputs.configured == 'true'
@@ -133,7 +133,7 @@ jobs:
       SMOKE_USER: ${{ secrets.SMOKE_USER }}
       SMOKE_PASS: ${{ secrets.SMOKE_PASS }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Health and sign-in page (retries while the free instance wakes up)
         run: bash scripts/smoke.sh
       - uses: actions/setup-node@v4
@@ -164,7 +164,7 @@ jobs:
       RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Restore the previous live deploy
         run: bash scripts/render-rollback.sh "${{ needs.deploy.outputs.previous_deploy_id }}"
       - name: Alert
