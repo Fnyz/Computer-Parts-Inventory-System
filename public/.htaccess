@@ -1,0 +1,5 @@
+# Send every request that isn't a real file to index.php (Apache / XAMPP / Render Docker image)
+Options -Indexes
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.php [QSA,L]

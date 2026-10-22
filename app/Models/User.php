@@ -52,16 +52,39 @@ class User extends Database
   return $stmt->fetchAll(PDO::FETCH_ASSOC);
  }
 
+ public function countUsers()
+ {
+  $stmt = $this->getConnect()->query("SELECT COUNT(*) FROM " . $this->table);
+  return (int)$stmt->fetchColumn();
+ }
+
+ public function usernameExists($username, $excludeId = 0)
+ {
+  $sql = "SELECT COUNT(*) FROM " . $this->table . " WHERE username = :username AND user_id <> :user_id";
+  $stmt = $this->getConnect()->prepare($sql);
+  $stmt->bindValue(":username", $username);
+  $stmt->bindValue(":user_id", (int)$excludeId, PDO::PARAM_INT);
+  $stmt->execute();
+  return (int)$stmt->fetchColumn() > 0;
+ }
+
  public function updateUser()
  {
-  $sql = "UPDATE " . $this->table . " SET user_fname = :user_fname, user_lname = :user_lname, username = :username, user_pass = :user_pass, user_updated_at = now() WHERE user_id = :user_id";
-  $stmt = $this->getConnect()->prepare($sql);
-  $hashedPass = password_hash($this->pass, PASSWORD_DEFAULT);
+  // An empty password field means "keep the current password"
+  $changePass = $this->pass !== null && $this->pass !== '';
+  $fields = "user_fname = :user_fname, user_lname = :user_lname, username = :username, user_updated_at = now()";
+  if ($changePass) {
+   $fields .= ", user_pass = :user_pass";
+  }
+  $stmt = $this->getConnect()->prepare("UPDATE " . $this->table . " SET " . $fields . " WHERE user_id = :user_id");
   $stmt->bindParam(":user_id", $this->id);
   $stmt->bindParam(":user_fname", $this->fname);
   $stmt->bindParam(":user_lname", $this->lname);
   $stmt->bindParam(":username", $this->username);
-  $stmt->bindParam(":user_pass", $hashedPass);
+  if ($changePass) {
+   $hashedPass = password_hash($this->pass, PASSWORD_DEFAULT);
+   $stmt->bindParam(":user_pass", $hashedPass);
+  }
   if ($stmt->execute()) { return true; }
  }
 }

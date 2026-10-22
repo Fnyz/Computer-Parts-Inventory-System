@@ -6,11 +6,10 @@
 <script>
 function getEditUser(id) {
  var fill = $('#editUserFormHolder');
- var currentUser = $('#idUser').val();
  $.ajax({
   url: '<?= BASE_URL ?>/app/Controllers/TransactionController.php',
   type: 'post',
-  data: { ids: id, currentUser: currentUser, action: 'viewUser' },
+  data: { ids: id, action: 'viewUser' },
   success: function(data) { fill.html(data); }
  });
 }

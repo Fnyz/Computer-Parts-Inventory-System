@@ -1,0 +1,9 @@
+parameters:
+    level: 5
+    paths:
+        - src
+        - config
+        - public/index.php
+        - database/migrations
+    bootstrapFiles:
+        - tests/phpstan-bootstrap.php

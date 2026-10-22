@@ -1,0 +1,6 @@
+# Uploaded files are images only: never execute anything from this folder
+<FilesMatch "\.(php|phtml|phar|php\d)$">
+    Require all denied
+</FilesMatch>
+RemoveHandler .php .phtml .phar
+RemoveType .php .phtml .phar

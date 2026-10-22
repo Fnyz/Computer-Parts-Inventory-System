@@ -1,6 +1,25 @@
-# Uploaded product images
-images/
-public/assets/uploads/
+# Local secrets (copy .env.example to .env)
+.env
+
+# Composer / Node dependencies
+/vendor/
+/node_modules/
+
+# Runtime files
+/storage/logs/*.log
+/storage/cache/
+/public/uploads/*
+!/public/uploads/.htaccess
+
+# Test and tool output
+/.phpunit.cache/
+/.php-cs-fixer.cache
+/test-results/
+/playwright-report/
+
+# Uploaded product images (old app)
+/images/
+/public/assets/uploads/
 
 # OS files
 .DS_Store
@@ -9,6 +28,7 @@ Thumbs.db
 # Editor files
 .vscode/
 .idea/
+.serena/
 
 # PHP logs / cache
 *.log

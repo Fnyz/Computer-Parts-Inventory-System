@@ -1,0 +1,178 @@
+name: CI/CD
+
+# Pull requests: lint, static analysis, security audit, tests, Docker build.
+# Push to main: the same checks, then migrate the database, deploy to Render,
+# smoke-test the live site, and roll back automatically if the smoke test fails.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Lint, analyse, test
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_USER: root
+      DB_PASS: root
+      DB_NAME: partsdesk_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, gd, zip, intl
+          coverage: none
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Code style
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff
+      - name: Static analysis
+        run: vendor/bin/phpstan analyse --memory-limit=512M --no-progress
+      - name: Security audit of dependencies
+        run: composer audit
+      - name: Unit and feature tests
+        run: vendor/bin/phpunit
+
+  docker:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: docker build -t partsdesk:ci .
+      - name: Container starts and answers /health
+        run: |
+          docker run -d --name app -p 8080:10000 partsdesk:ci
+          # No database here, so /health reports "unreachable" (503). That still proves PHP and Apache work.
+          for i in $(seq 1 30); do
+            body=$(curl -s localhost:8080/health || true)
+            if echo "$body" | grep -q '"database"'; then echo "$body"; exit 0; fi
+            sleep 2
+          done
+          docker logs app
+          exit 1
+
+  deploy:
+    name: Deploy to Render
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [test, docker]
+    runs-on: ubuntu-latest
+    environment: production
+    outputs:
+      configured: ${{ steps.check.outputs.configured }}
+      previous_deploy_id: ${{ steps.render.outputs.previous_deploy_id }}
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_PORT: ${{ secrets.DB_PORT }}
+      DB_NAME: ${{ secrets.DB_NAME }}
+      DB_USER: ${{ secrets.DB_USER }}
+      DB_PASS: ${{ secrets.DB_PASS }}
+      DB_SSL_CA: ${{ secrets.DB_SSL_CA }}
+    steps:
+      - name: Check deploy settings
+        id: check
+        run: |
+          if [ -z "$RENDER_API_KEY" ] || [ -z "$RENDER_SERVICE_ID" ] || [ -z "$DB_HOST" ]; then
+            echo "::notice::Render/Aiven secrets are not set yet, so nothing was deployed. See README → Deploying."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.configured == 'true'
+      - uses: shivammathur/setup-php@v2
+        if: steps.check.outputs.configured == 'true'
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql
+          coverage: none
+      - name: Install dependencies
+        if: steps.check.outputs.configured == 'true'
+        run: composer install --no-dev --no-interaction --prefer-dist --no-progress
+      # Render's free plan has no pre-deploy step, so migrations run here, before the new code goes live.
+      # Migrations must stay compatible with the code that is live right now.
+      - name: Migrate the Aiven database
+        if: steps.check.outputs.configured == 'true'
+        run: vendor/bin/phinx migrate
+      - name: Deploy this commit and wait until it is live
+        id: render
+        if: steps.check.outputs.configured == 'true'
+        run: bash scripts/render-deploy.sh "$GITHUB_SHA"
+
+  smoke:
+    name: Smoke test the live site
+    needs: deploy
+    if: needs.deploy.outputs.configured == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      APP_URL: ${{ vars.APP_URL }}
+      SMOKE_USER: ${{ secrets.SMOKE_USER }}
+      SMOKE_PASS: ${{ secrets.SMOKE_PASS }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Health and sign-in page (retries while the free instance wakes up)
+        run: bash scripts/smoke.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install Playwright
+        run: npm ci && npx playwright install --with-deps chromium
+      - name: Sign in and open the main pages
+        run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: smoke-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  rollback:
+    name: Roll back
+    needs: [deploy, smoke]
+    if: always() && needs.smoke.result == 'failure' && needs.deploy.outputs.previous_deploy_id != ''
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore the previous live deploy
+        run: bash scripts/render-rollback.sh "${{ needs.deploy.outputs.previous_deploy_id }}"
+      - name: Alert
+        if: always()
+        run: |
+          msg="PartsDesk: the smoke test failed for ${GITHUB_SHA::7}, so the previous version was restored. ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          echo "::error::$msg"
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            curl -fsS -H 'Content-Type: application/json' -d "{\"content\": \"$msg\"}" "$DISCORD_WEBHOOK_URL" || true
+          fi
+          exit 1

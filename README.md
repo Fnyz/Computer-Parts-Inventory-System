@@ -175,18 +175,44 @@ This system allows staff to manage computer parts inventory, track suppliers, cr
 ### Steps
 
 1. Clone the repository into your web server's document root (e.g., `htdocs/`).
-2. Create a MySQL database (e.g., `inventory_db`).
-3. Import the database schema (SQL file not included — create tables manually using the structure above).
-4. Edit `app/Database/Database.php` with your DB credentials:
+2. Create the database and tables:
 
-```php
-private $server = "localhost";
-private $user   = "root";
-private $pass   = "your_password";
-private $dbname = "inventory_db";
+```bash
+mysql -u root -p < database/schema.sql
 ```
 
-5. Open your browser and navigate to `http://localhost/Computer-Parts-Inventory-Management-System/login.php`.
+3. Copy `.env.example` to `.env` and fill in your database credentials. `.env` is git-ignored; never commit it.
+
+```ini
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=inventorymanagementsystem
+DB_USER=root
+DB_PASS=your_password
+```
+
+4. Open `http://localhost/Computer-Parts-Inventory-System/login.php` and click **Set up admin account**. This button only appears while there are no accounts. The first account is always an Admin.
+5. Sign in, then add Staff and Employee accounts from **Registered Accounts**.
+
+### Upgrading an existing database
+
+If your database was created by the **original** version of the app (it has a `customer` table instead of `supplier`), run once:
+
+```bash
+mysql -u root -p <your_database> < database/upgrade-legacy.sql
+php database/hash-plaintext-passwords.php
+```
+
+The first command renames `customer` to `supplier`, adds the `userType` and `prod_image` columns, and makes the oldest account the Admin. The second stores any plain-text passwords as hashes; each password stays the same.
+
+If you installed after the 2026-06 refactor but before the Phase 0 hotfixes, run once:
+
+```bash
+mysql -u root -p inventorymanagementsystem < database/phase0-upgrade.sql
+php database/find-empty-passwords.php
+```
+
+The script lists accounts whose password was wiped by the old edit bug. An Admin should set a new password for each of them.
 
 ---
 
@@ -221,6 +247,25 @@ All previously identified vulnerabilities have been resolved.
 ---
 
 ## Changelog
+
+### Phase 0 hotfixes (2026-10-22)
+
+**Security**
+- Public sign-up removed. Only the first account can be created from the login page, and it is always an Admin. After that, only an Admin can create accounts, and the server validates the role (`Admin`, `Staff`, `Employee`).
+- Editing a user no longer wipes their password. A blank password field keeps the current one, and empty passwords are rejected at login.
+- Users can edit only their own account; an Admin can edit anyone. Who is asking now comes from the session, not from a form field.
+- Employees are blocked from recording transactions on the server, not only in the browser. The encoder on a transaction line comes from the session.
+- Database credentials moved to `.env`. Connection errors and exceptions are logged instead of shown to users.
+
+**Bugs**
+- Every page in `views/` loaded `config.php` from the wrong folder and crashed after login. The include paths are fixed.
+- Editing a product no longer deletes its image.
+- Transaction History works under MySQL's default `ONLY_FULL_GROUP_BY` mode.
+- Success and error messages are now shown at the top of each page.
+- One shared database connection per request instead of one per query.
+
+**Setup**
+- Added `database/schema.sql`, `database/phase0-upgrade.sql`, `database/find-empty-passwords.php` and `.env.example`.
 
 ### Refactor (2026-06-30)
 

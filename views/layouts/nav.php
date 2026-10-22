@@ -11,6 +11,10 @@ $nav = [
  'history'      => ['url' => BASE_URL . '/views/transactions/history.php',   'icon' => 'fa-money-bill-1-wave', 'label' => 'History'],
  'logout'       => ['url' => BASE_URL . '/logout.php',                        'icon' => 'fa-right-from-bracket','label' => 'Log-Out'],
 ];
+require_once BASEPATH . '/app/Helpers/auth.php';
+if (!is_admin()) {
+ unset($nav['accounts']);
+}
 ?>
 
 <!-- Top bar -->
@@ -89,3 +93,14 @@ $nav = [
  </div>
 
 </div>
+
+<!-- Flash messages set by the controllers -->
+<?php foreach (['Saves' => 'success', 'Error' => 'danger'] as $flashKey => $flashType): ?>
+ <?php if (!empty($_SESSION[$flashKey])): ?>
+  <div class="alert alert-<?= $flashType ?> alert-dismissible fade show m-3 mb-0" role="alert">
+   <?= htmlspecialchars($_SESSION[$flashKey], ENT_QUOTES, 'UTF-8') ?>
+   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+  <?php unset($_SESSION[$flashKey]); ?>
+ <?php endif; ?>
+<?php endforeach; ?>

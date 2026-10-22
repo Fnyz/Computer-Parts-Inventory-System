@@ -7,25 +7,27 @@ require_once __DIR__ . '/app/Helpers/csrf.php';
 $userModel = new User();
 $dt = new Database();
 $conn = $dt->getConnect();
-$acc = $userModel->showUserAdmin();
-
-if (count($acc) == 1) {
- $hideAdminOption = true;
-} else {
- $hideAdminOption = false;
-}
+// With no accounts yet, show the one-time form that creates the first Admin.
+// After that, accounts are created by an Admin on the Accounts page.
+$firstRun = $userModel->countUsers() === 0;
 
 $message = [];
+foreach (['Saves', 'Error'] as $key) {
+ if (!empty($_SESSION[$key])) {
+  $message[] = $_SESSION[$key];
+  unset($_SESSION[$key]);
+ }
+}
 if ($_SERVER["REQUEST_METHOD"] == 'POST') {
- $username = $_POST['username'];
- $pass = $_POST['password'];
+ $username = trim($_POST['username'] ?? '');
+ $pass = $_POST['password'] ?? '';
 
  $statement = $conn->prepare("SELECT * FROM user_account WHERE username = :username");
  $statement->bindValue(':username', $username);
  $statement->execute();
  $arr = $statement->fetch(PDO::FETCH_ASSOC);
 
- if (empty($arr) || !password_verify($pass, $arr['user_pass'])) {
+ if ($username === '' || $pass === '' || empty($arr) || !password_verify($pass, $arr['user_pass'])) {
   $message[] = 'Invalid Credentials, Please try again!';
  } else {
   $message[] = "Congratulations, You are successfully logged in!";
@@ -92,20 +94,23 @@ csrf_token();
             </div>
 
         </form>
+        <?php if ($firstRun): ?>
         <div class="input-group mb-3">
-            <button class="btn btn-primary" type="submit" data-bs-toggle="modal" data-bs-target="#addAccount">CREATE ACCOUNT</button>
+            <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#addAccount">SET UP ADMIN ACCOUNT</button>
 
         </div>
+        <?php endif; ?>
 
         <div class=""><?php $message; ?></div>
 
     </div>
 
+    <?php if ($firstRun): ?>
     <div class="modal fade" id="addAccount" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-primary">
-                    <h1 class="modal-title fs-5 text text-white fw-bold text-uppercase" id="staticBackdropLabel" style="font-family: 'Playfair Display', serif; letter-spacing:2px; "><i class="fa-sharp fa-solid fa-user me-2"></i>Create Account</h1>
+                    <h1 class="modal-title fs-5 text text-white fw-bold text-uppercase" id="staticBackdropLabel" style="font-family: 'Playfair Display', serif; letter-spacing:2px; "><i class="fa-sharp fa-solid fa-user me-2"></i>Create Admin Account</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 
                 </div>
@@ -115,25 +120,15 @@ csrf_token();
                  <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
                     <div class="modal-body">
                    
-                       <select name="userType" class="form-control text-center mb-3" style="width: 200px;" >
-                                    <option value="0" selected="">-- Choose here --</option>
-
-                                    <?php if (!$hideAdminOption): ?>
-                                     <option value="Admin">Admin</option>
-
-                                    <?php endif; ?>
-                                    <option value="Emoloyee"> Employee</option>
-                                    <option value="Emoloyee"> Staff</option>
-
-                         </select>
+                        <p class="mb-3">This is the first account, so it will be an <b>Admin</b>. You can add Staff and Employee accounts from the Accounts page after signing in.</p>
                         <div class="form-floating mb-3">
                             <input type="text" class="form-control" id="floatingInput" name="user">
                             <label for="floatingInput" class="text text-black">Username:</label>
 
                         </div>
                         <div class="form-floating mb-3">
-                            <input type="password" class="form-control" id="floatingInput" name="pass">
-                            <label for="floatingInput" class="text text-black">Password:</label>
+                            <input type="password" class="form-control" id="floatingInput" name="pass" minlength="8" required>
+                            <label for="floatingInput" class="text text-black">Password (at least 8 characters):</label>
 
                         </div>
                         <hr>
@@ -167,6 +162,7 @@ csrf_token();
         </div>
 
     </div>
+    <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js" integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN" crossorigin="anonymous"></script>
 
