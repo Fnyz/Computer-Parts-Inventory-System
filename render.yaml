@@ -1,0 +1,38 @@
+# Render Blueprint: creates the PartsDesk web service from this repo (Render dashboard → New → Blueprint).
+# Secrets are marked sync: false, so Render asks for them instead of reading them from this file.
+services:
+  - type: web
+    name: partsdesk
+    runtime: docker
+    plan: free
+    region: singapore
+    healthCheckPath: /health
+    # GitHub Actions deploys only after the tests pass, through the deploy hook
+    autoDeploy: false
+    envVars:
+      - key: APP_TIMEZONE
+        value: Asia/Manila
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: APP_DEBUG
+        value: "false"
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASS
+        sync: false
+      - key: DB_SSL_CA
+        sync: false
+      - key: CLOUDINARY_URL
+        sync: false
+      - key: SHOP_NAME
+        value: PartsDesk Computer Parts
+      - key: SHOP_ADDRESS
+        sync: false
+      - key: SHOP_PHONE
+        sync: false

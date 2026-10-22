@@ -6,6 +6,7 @@ if (!isset($_SESSION['adminId'])) {
  exit('Unauthorized.');
 }
 require_once BASEPATH . '/app/Helpers/csrf.php';
+require_once BASEPATH . '/app/Helpers/auth.php';
 require_once BASEPATH . '/app/Models/Sale.php';
 require_once BASEPATH . '/app/Models/Product.php';
 require_once BASEPATH . '/app/Models/Supplier.php';
@@ -148,7 +149,12 @@ if ($action === 'viewCust') {
 
 if ($action === 'viewUser') {
  $user->id   = (int)($_POST['ids'] ?? 0);
- $currentUser = (int)($_POST['currentUser'] ?? 0);
+ // Trust the session, not the browser, for who is asking
+ $currentUser = (int)$_SESSION['adminId'];
+ if ($user->id !== $currentUser && !is_admin()) {
+  http_response_code(403);
+  exit('You can only edit your own account.');
+ }
  foreach ($user->getSingleUser() as $result) {
   extract($result);
   $form  = '
@@ -171,12 +177,13 @@ if ($action === 'viewUser') {
      <input type="text" class="form-control" value="' . htmlspecialchars($user_lname, ENT_QUOTES, 'UTF-8') . '" name="lname">
      <label>Last Name:</label>
     </div>';
-  if ($currentUser === (int)$user_id) {
+  if ($currentUser === (int)$user_id || is_admin()) {
    $form .= '
-    <div class="form-floating mb-3">
-     <input type="password" class="form-control" value="" name="pass" placeholder="Enter new password">
+    <div class="form-floating mb-1">
+     <input type="password" class="form-control" value="" name="pass" placeholder="Enter new password" autocomplete="new-password">
      <label>New Password:</label>
-    </div>';
+    </div>
+    <div class="form-text mb-3">Leave blank to keep the current password.</div>';
   }
   $form .= '
 
@@ -197,6 +204,12 @@ if ($action === 'viewUser') {
 
 csrf_validate();
 
+// Employees may not record purchases. The page blocks this too, but the server must enforce it.
+if ((current_user()['userType'] ?? '') === 'Employee') {
+ http_response_code(403);
+ exit('Your account type cannot record transactions.');
+}
+
 if ($action === 'insertTransaction') {
  $error    = [];
  $response = ['error' => null];
@@ -208,7 +221,7 @@ if ($action === 'insertTransaction') {
   $sale->cus_id     = $_POST['cus_id'] ?? '';
   $sale->sub_price  = $_POST['total_price'] ?? 0;
   $sale->total_quan = $_POST['onhand'] ?? 0;
-  $sale->user_id    = $_POST['user_id'] ?? '';
+  $sale->user_id    = (int)$_SESSION['adminId'];
   $sale->insertData();
  }
  foreach ($error as $e) {

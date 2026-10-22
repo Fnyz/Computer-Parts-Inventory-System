@@ -58,7 +58,8 @@ class TransactionModel extends Database
 
  public function showAll()
  {
-  $sql = "SELECT t.transac_code, c.cus_fname, SUM(t.transac_quan) AS total_quan, t.transac_created_at
+  // Every selected column is grouped or aggregated, so this works with MySQL's ONLY_FULL_GROUP_BY mode
+  $sql = "SELECT t.transac_code, MAX(c.cus_fname) AS cus_fname, SUM(t.transac_quan) AS total_quan, MIN(t.transac_created_at) AS transac_created_at
   FROM transactions t INNER JOIN supplier c ON t.cus_id = c.cus_id
   GROUP BY t.transac_code";
   $stmt = $this->getConnect()->prepare($sql);

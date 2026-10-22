@@ -1,0 +1,11 @@
+{
+  "name": "partsdesk-smoke-tests",
+  "private": true,
+  "description": "Browser smoke tests for the live PartsDesk site (run by CI after each deploy).",
+  "scripts": {
+    "smoke": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0"
+  }
+}

@@ -1,0 +1,20 @@
+# Keep secrets, dependencies and dev files out of the image
+.env
+.git
+.github
+.serena
+.idea
+.vscode
+vendor
+node_modules
+tests
+test-results
+playwright-report
+storage/logs/*.log
+public/uploads/*
+!public/uploads/.htaccess
+*.md
+Dockerfile
+.dockerignore
+.phpunit.cache
+.php-cs-fixer.cache
