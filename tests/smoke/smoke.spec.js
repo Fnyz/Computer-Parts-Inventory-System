@@ -13,6 +13,11 @@ test('health check reports ok', async ({ request }) => {
 
 test('sign-in page loads', async ({ page }) => {
   await page.goto('/login');
+  // A brand-new site with no accounts redirects to the first-run Set up screen instead
+  if (page.url().endsWith('/setup')) {
+    await expect(page.getByRole('button', { name: /create admin account/i })).toBeVisible();
+    return;
+  }
   await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
 });
 
