@@ -17,11 +17,17 @@ for attempt in $(seq 1 12); do
   if [ "$attempt" = 12 ]; then echo "✘ /health never reported ok"; exit 1; fi
 done
 
-code=$(curl -s -o /tmp/smoke-login.html -w '%{http_code}' --max-time 30 "$URL/login")
+# Follow redirects: a brand-new site with no accounts sends /login to /setup, which is correct
+result=$(curl -s -L -o /tmp/smoke-login.html -w '%{http_code} %{url_effective}' --max-time 30 "$URL/login")
+code=${result%% *}
+landed=${result#* }
 if [ "$code" = 200 ] && grep -q 'PARTSDESK' /tmp/smoke-login.html; then
-  echo "✔ /login loads"
+  case "$landed" in
+    */setup) echo "✔ /login redirects to /setup (no accounts yet: open the site and create the first Admin)" ;;
+    *) echo "✔ /login loads" ;;
+  esac
 else
-  echo "✘ /login returned $code"; exit 1
+  echo "✘ /login ended at $landed with HTTP $code"; exit 1
 fi
 
 for secret in /.env /composer.json /vendor/autoload.php /src/Core/App.php; do
