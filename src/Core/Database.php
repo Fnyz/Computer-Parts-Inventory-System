@@ -71,7 +71,10 @@ final class Database
         // Managed MySQL (e.g. Aiven) requires TLS with the provider's CA certificate
         $ca = self::caFile();
         if ($ca !== null) {
-            $options[PDO::MYSQL_ATTR_SSL_CA] = $ca;
+            // PHP 8.4+ names it Pdo\Mysql::ATTR_SSL_CA (the old PDO::MYSQL_ATTR_SSL_CA is deprecated in 8.5);
+            // the Docker image runs 8.3, which only has the old name
+            $sslCa = defined('Pdo\Mysql::ATTR_SSL_CA') ? constant('Pdo\Mysql::ATTR_SSL_CA') : constant('PDO::MYSQL_ATTR_SSL_CA');
+            $options[$sslCa] = $ca;
         }
 
         $pdo = new PDO($dsn, (string) env('DB_USER', 'root'), (string) env('DB_PASS', ''), $options);
