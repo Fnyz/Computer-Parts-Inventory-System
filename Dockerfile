@@ -10,7 +10,7 @@ COPY . .
 RUN composer dump-autoload --no-dev --optimize
 
 # ---- 2. Runtime ----
-FROM php:8.3-apache
+FROM php:8.5-apache
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends libpng-dev libjpeg62-turbo-dev libfreetype6-dev libwebp-dev libzip-dev \
